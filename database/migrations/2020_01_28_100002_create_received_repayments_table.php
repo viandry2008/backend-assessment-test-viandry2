@@ -18,6 +18,9 @@ class CreateReceivedRepaymentsTable extends Migration
             $table->unsignedInteger('loan_id');
 
             // TODO: Add missing columns here
+            $table->decimal('amount', 15, 2);  // Menyimpan jumlah pembayaran
+            $table->string('currency_code', 3);  // Menyimpan kode mata uang, misalnya USD, IDR
+            $table->timestamp('received_at');  // Waktu penerimaan pembayaran
 
             $table->timestamps();
             $table->softDeletes();

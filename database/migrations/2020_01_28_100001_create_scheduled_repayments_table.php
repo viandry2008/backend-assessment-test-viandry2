@@ -18,6 +18,11 @@ class CreateScheduledRepaymentsTable extends Migration
             $table->unsignedInteger('loan_id');
 
             // TODO: Add missing columns here
+            $table->decimal('amount', 15, 2);  // Menyimpan jumlah yang dijadwalkan untuk pembayaran
+            $table->string('currency_code', 3);  // Menyimpan kode mata uang (misalnya USD, IDR)
+            $table->date('due_date');  // Tanggal jatuh tempo pembayaran
+            $table->decimal('outstanding_amount', 15, 2);  // Jumlah yang masih terhutang
+            $table->enum('status', ['due', 'partial', 'repaid']);  // Status pembayaran
 
             $table->timestamps();
             $table->softDeletes();
