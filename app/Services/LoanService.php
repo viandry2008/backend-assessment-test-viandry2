@@ -23,7 +23,7 @@ class LoanService
      */
     public function createLoan(User $user, int $amount, string $currencyCode, int $terms, string $processedAt): Loan
     {
-        // Create Loan
+        // Buat Loan
         $loan = Loan::create([
             'user_id' => $user->id,
             'amount' => $amount,
@@ -34,15 +34,25 @@ class LoanService
             'status' => Loan::STATUS_DUE,
         ]);
 
-        // Create Scheduled Repayments
-        $repaymentAmount = intdiv($amount, $terms); // Pembagian jumlah yang rata
-        $remainingAmount = $amount % $terms; // Sisa pembagian untuk pembayaran terakhir
-        $dueDate = Carbon::parse($processedAt); // Menghitung tanggal mulai
+        // Hitung jumlah pembayaran per termin
+        $repaymentAmount = intdiv($amount, $terms); // Pembayaran rata-rata
+        $remainingAmount = $amount % $terms; // Sisa pembagian
+
+        // Buat jadwal pembayaran, mulai dari bulan setelah processed_at
+        $dueDate = Carbon::parse($processedAt)->addMonth(); // Tambahkan satu bulan ke tanggal processed_at
+        $totalScheduledAmount = 0; // Menyimpan jumlah total jadwal pembayaran
 
         for ($i = 0; $i < $terms; $i++) {
-            $dueDate->addMonth(); // Menambahkan bulan untuk setiap termin
-            $currentAmount = $repaymentAmount + ($i === $terms - 1 ? $remainingAmount : 0); // Sesuaikan pembayaran terakhir
+            // Hitung pembayaran untuk termin ini
+            $currentAmount = $repaymentAmount;
+            
+            // Jika ini termin terakhir, tambahkan sisa pembagian untuk mencapai nilai yang diinginkan
+            if ($i === $terms - 1) {
+                // Termin terakhir akan menerima sisa dari pembagian
+                $currentAmount += $remainingAmount;
+            }
 
+            // Buat jadwal pembayaran
             ScheduledRepayment::create([
                 'loan_id' => $loan->id,
                 'amount' => $currentAmount,
@@ -51,10 +61,29 @@ class LoanService
                 'due_date' => $dueDate->toDateString(),
                 'status' => ScheduledRepayment::STATUS_DUE,
             ]);
+
+            // Update total amount yang terjadwal
+            $totalScheduledAmount += $currentAmount;
+
+            // Tambahkan satu bulan untuk pembayaran berikutnya
+            $dueDate->addMonth();
+        }
+
+        // Sesuaikan `amount` dan `outstanding_amount` pada Loan agar sesuai dengan total scheduled amount
+        if ($totalScheduledAmount !== $amount) {
+            // Jika total pembayaran yang terjadwal belum mencapai jumlah yang diinginkan,
+            // sesuaikan loan dengan nilai yang benar
+            $adjustedAmount = $amount + ($totalScheduledAmount - $amount);
+            $loan->update([
+                'amount' => $adjustedAmount,
+                'outstanding_amount' => $adjustedAmount,
+            ]);
         }
 
         return $loan;
+
     }
+
 
     /**
      * Repay Scheduled Repayments for a Loan
