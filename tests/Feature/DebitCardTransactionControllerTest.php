@@ -26,35 +26,101 @@ class DebitCardTransactionControllerTest extends TestCase
         Passport::actingAs($this->user);
     }
 
+    // Test: Customer can see a list of debit card transactions
     public function testCustomerCanSeeAListOfDebitCardTransactions()
     {
-        // get /debit-card-transactions
+        $transaction = DebitCardTransaction::factory()->create([
+            'debit_card_id' => $this->debitCard->id
+        ]);
+
+        $response = $this->getJson("/api/debit-card-transactions?debit_card_id={$this->debitCard->id}");
+
+        $response->assertStatus(200);
+        $response->assertJsonCount(1);
+        $response->assertJsonFragment([
+            'amount' => $transaction->amount,
+        ]);
     }
 
+    // Test: Customer cannot see a list of debit card transactions of other customer's debit card
     public function testCustomerCannotSeeAListOfDebitCardTransactionsOfOtherCustomerDebitCard()
     {
-        // get /debit-card-transactions
+        $otherUser = User::factory()->create();
+        $otherDebitCard = DebitCard::factory()->create(['user_id' => $otherUser->id]);
+
+        DebitCardTransaction::factory()->create([
+            'debit_card_id' => $otherDebitCard->id
+        ]);
+
+        $response = $this->getJson("/api/debit-card-transactions?debit_card_id={$otherDebitCard->id}");
+
+        $response->assertStatus(403); // Forbidden, should not access other user's debit card transactions
     }
 
+    // Test: Customer can create a debit card transaction
     public function testCustomerCanCreateADebitCardTransaction()
     {
-        // post /debit-card-transactions
+        $data = [
+            'debit_card_id' => $this->debitCard->id,
+            'amount' => 500,
+            'currency_code' => 'USD',
+        ];
+
+        $response = $this->postJson("/api/debit-card-transactions", $data);
+
+        $response->assertStatus(201);
+        $response->assertJsonFragment($data);
+        $response->assertJsonFragment([
+            'amount' => 500,
+            'currency_code' => 'USD',
+        ]);
     }
 
+    // Test: Customer cannot create a debit card transaction to another customer's debit card
     public function testCustomerCannotCreateADebitCardTransactionToOtherCustomerDebitCard()
     {
-        // post /debit-card-transactions
+        $otherUser = User::factory()->create();
+        $otherDebitCard = DebitCard::factory()->create(['user_id' => $otherUser->id]);
+
+        $data = [
+            'debit_card_id' => $otherDebitCard->id,
+            'amount' => 500,
+            'currency_code' => 'USD',
+        ];
+
+        $response = $this->postJson("/api/debit-card-transactions", $data);
+
+        $response->assertStatus(403); // Forbidden, should not access other user's debit card for transaction
     }
 
+    // Test: Customer can see a debit card transaction
     public function testCustomerCanSeeADebitCardTransaction()
     {
-        // get /debit-card-transactions/{debitCardTransaction}
+        $transaction = DebitCardTransaction::factory()->create([
+            'debit_card_id' => $this->debitCard->id
+        ]);
+
+        $response = $this->getJson("/api/debit-card-transactions/{$transaction->id}");
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment([
+            'amount' => $transaction->amount,
+        ]);
     }
 
+    // Test: Customer cannot see a debit card transaction attached to another customer's debit card
     public function testCustomerCannotSeeADebitCardTransactionAttachedToOtherCustomerDebitCard()
     {
-        // get /debit-card-transactions/{debitCardTransaction}
-    }
+        $otherUser = User::factory()->create();
+        $otherDebitCard = DebitCard::factory()->create(['user_id' => $otherUser->id]);
+        $transaction = DebitCardTransaction::factory()->create([
+            'debit_card_id' => $otherDebitCard->id
+        ]);
 
+        $response = $this->getJson("/api/debit-card-transactions/{$transaction->id}");
+
+        $response->assertStatus(403); // Forbidden, should not access other user's transaction
+    }
+    
     // Extra bonus for extra tests :)
 }
