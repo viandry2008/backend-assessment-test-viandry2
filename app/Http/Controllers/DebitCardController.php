@@ -29,7 +29,9 @@ class DebitCardController extends BaseController
             ->active()
             ->get();
 
+        // dd($debitCards);
         return response()->json(DebitCardResource::collection($debitCards), HttpResponse::HTTP_OK);
+        // return response()->json($debitCards, HttpResponse::HTTP_OK);
     }
 
     /**
